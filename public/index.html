@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4F46E5">
+  <meta property="og:title" content="物流单号查询">
+  <meta property="og:description" content="输入手机号，快速查询您的物流单号">
+  <title>物流单号查询</title>
+  <style>
+    * { margin:0; padding:0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: #fff; border-radius: 20px; padding: 36px 28px;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .header { text-align: center; margin-bottom: 32px; }
+    .logo { font-size: 48px; line-height: 1; margin-bottom: 12px; }
+    .title { font-size: 22px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+    .subtitle { font-size: 13px; color: #888; }
+
+    .input-group { margin-bottom: 16px; }
+    .input-label { font-size: 14px; color: #555; margin-bottom: 8px; font-weight: 500; }
+    .phone-input {
+      width: 100%; padding: 14px 16px; border: 2px solid #e8e8e8;
+      border-radius: 12px; font-size: 18px; letter-spacing: 1px;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+      color: #1a1a2e; background: #fafafa;
+    }
+    .phone-input:focus { border-color: #4F46E5; box-shadow: 0 0 0 3px rgba(79,70,229,0.12); background: #fff; }
+    .phone-input::placeholder { color: #bbb; }
+
+    .btn-query {
+      width: 100%; padding: 15px;
+      background: linear-gradient(135deg, #4F46E5, #7C3AED);
+      color: #fff; border: none; border-radius: 12px;
+      font-size: 17px; font-weight: 600; cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s; letter-spacing: 2px;
+    }
+    .btn-query:active { transform: scale(0.98); opacity: 0.9; }
+    .btn-query:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .result-box { margin-top: 24px; padding: 20px; border-radius: 14px; display: none; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+    .result-box.success { background: linear-gradient(135deg,#f0fdf4,#dcfce7); border: 1.5px solid #86efac; }
+    .result-box.warning { background: linear-gradient(135deg,#fffbeb,#fef3c7); border: 1.5px solid #fcd34d; }
+    .result-box.error { background: linear-gradient(135deg,#fff1f2,#ffe4e6); border: 1.5px solid #fca5a5; }
+    .result-icon { font-size: 28px; margin-bottom: 8px; text-align: center; }
+    .result-title { font-size: 15px; font-weight: 600; color: #374151; margin-bottom: 10px; text-align: center; }
+
+    .tracking-list { margin-top: 8px; }
+    .tracking-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,255,255,0.8); border-radius: 10px;
+      padding: 12px 14px; margin-bottom: 8px;
+    }
+    .tracking-item:last-child { margin-bottom: 0; }
+    .tracking-label { font-size: 12px; color: #6b7280; margin-bottom: 2px; }
+    .tracking-no { font-size: 16px; font-weight: 700; color: #059669; letter-spacing: 0.5px; word-break: break-all; }
+    .copy-btn {
+      flex-shrink: 0; margin-left: 10px; padding: 5px 10px;
+      background: #059669; color: #fff; border: none; border-radius: 6px;
+      font-size: 12px; cursor: pointer; transition: background 0.2s;
+    }
+    .copy-btn:active { background: #047857; }
+    .result-msg { font-size: 14px; color: #6b7280; text-align: center; line-height: 1.7; }
+
+    .spinner {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* C端底部二维码 */
+    .c-qr-section {
+      margin-top: 28px; padding-top: 20px;
+      border-top: 1px solid #eee; text-align: center;
+    }
+    .c-qr-section .qr-label { font-size: 13px; color: #888; margin-bottom: 10px; }
+    .c-qr-section img.qr-img {
+      width: 140px; height: 140px;
+      border-radius: 10px; border: 2px solid #e0e7ff;
+    }
+    .c-qr-section .qr-tip { font-size: 11px; color: #aaa; margin-top: 8px; line-height: 1.6; }
+
+    .footer { margin-top: 20px; text-align: center; font-size: 12px; color: #bbb; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="header">
+    <div class="logo">📦</div>
+    <div class="title">物流单号查询</div>
+    <div class="subtitle">请输入您的手机号查询快递信息</div>
+  </div>
+
+  <div class="input-group">
+    <div class="input-label">手机号码</div>
+    <input type="tel" id="phoneInput" class="phone-input"
+      placeholder="请输入 11 位手机号"
+      maxlength="11" inputmode="numeric" pattern="[0-9]*" autocomplete="tel">
+  </div>
+
+  <button class="btn-query" id="queryBtn" onclick="doQuery()">查 询</button>
+
+  <!-- 结果展示 -->
+  <div class="result-box" id="resultBox">
+    <div class="result-icon" id="resultIcon"></div>
+    <div class="result-title" id="resultTitle"></div>
+    <div class="tracking-list" id="trackingList"></div>
+    <div class="result-msg" id="resultMsg"></div>
+  </div>
+
+  <!-- C端底部：展示本页面二维码 -->
+  <div class="c-qr-section" id="cQrSection" style="display:none;">
+    <div class="qr-label">📲 保存此页面，下次直接扫码查询</div>
+    <img class="qr-img" id="cQrImg" alt="查询页二维码">
+    <div class="qr-tip"><b>微信长按二维码</b> → 识别图中二维码<br>或保存图片，下次扫一扫即可查询</div>
+  </div>
+
+  <div class="footer">如有疑问请联系客服</div>
+</div>
+
+<script>
+  const API_BASE = window.location.origin;
+
+  document.getElementById('phoneInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doQuery();
+  });
+  document.getElementById('phoneInput').addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g, '').slice(0, 11);
+  });
+
+  // 页面加载时生成 C 端二维码（调用服务端接口）
+  window.addEventListener('load', function() {
+    generateCQr();
+    loadDB();
+  });
+
+  function generateCQr() {
+    var url = window.location.origin + '/';
+    var img = document.getElementById('cQrImg');
+    // 调用服务端 /api/qrcode 接口（PNG格式，微信可长按识别）
+    img.src = '/api/qrcode?url=' + encodeURIComponent(url) + '&t=' + Date.now();
+    img.onload = function() {
+      document.getElementById('cQrSection').style.display = 'block';
+    };
+    img.onerror = function() {
+      document.getElementById('cQrSection').style.display = 'none';
+    };
+  }
+
+  async function doQuery() {
+    const phone = document.getElementById('phoneInput').value.trim();
+    const btn = document.getElementById('queryBtn');
+    const resultBox = document.getElementById('resultBox');
+
+    if (!/^1[3-9]\d{9}$/.test(phone)) {
+      showResult('error', '⚠️', '手机号格式不正确', [], '请输入正确的11位中国大陆手机号');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>查询中...';
+    resultBox.style.display = 'none';
+
+    try {
+      const res = await fetch(`${API_BASE}/api/query?phone=${encodeURIComponent(phone)}`);
+      const data = await res.json();
+
+      if (!data.success) {
+        showResult('error', '❌', '查询失败', [], data.message);
+        return;
+      }
+
+      if (data.found && data.trackingNos && data.trackingNos.length > 0) {
+        showResult('success', '✅', `查询成功，共 ${data.trackingNos.length} 个物流单`, data.trackingNos, '');
+      } else if (data.hasRecord) {
+        showResult('warning', '⏳', '暂未发货', [], data.message);
+      } else {
+        showResult('error', '🔍', '未找到记录', [], data.message);
+      }
+    } catch (err) {
+      showResult('error', '❌', '网络错误', [], '请检查网络连接后重试');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '查 询';
+    }
+  }
+
+  function showResult(type, icon, title, trackingNos, msg) {
+    const box = document.getElementById('resultBox');
+    document.getElementById('resultIcon').textContent = icon;
+    document.getElementById('resultTitle').textContent = title;
+    document.getElementById('resultMsg').textContent = msg;
+    box.className = 'result-box ' + type;
+
+    const listEl = document.getElementById('trackingList');
+    listEl.innerHTML = '';
+    if (trackingNos && trackingNos.length > 0) {
+      trackingNos.forEach((no, idx) => {
+        const item = document.createElement('div');
+        item.className = 'tracking-item';
+        item.innerHTML = `
+          <div>
+            <div class="tracking-label">快递单号 ${trackingNos.length > 1 ? idx + 1 : ''}</div>
+            <div class="tracking-no">${escapeHtml(no)}</div>
+          </div>
+          <button class="copy-btn" onclick="copyText('${escapeHtml(no)}', this)">复制</button>
+        `;
+        listEl.appendChild(item);
+      });
+    }
+
+    box.style.display = 'block';
+    setTimeout(() => box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+  }
+
+  function copyText(text, btn) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = '已复制✓';
+        setTimeout(() => btn.textContent = '复制', 1500);
+      });
+    } else {
+      const el = document.createElement('textarea');
+      el.value = text; el.style.position = 'fixed'; el.style.opacity = '0';
+      document.body.appendChild(el); el.select();
+      document.execCommand('copy'); document.body.removeChild(el);
+      btn.textContent = '已复制✓';
+      setTimeout(() => btn.textContent = '复制', 1500);
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  async function loadDB() {
+  try {
+    const res = await fetch(`${API_BASE}/api/list`);
+    const data = await res.json();
+    if (data.success) {
+      console.log('[DB] 当前数据库共有', data.total, '条记录');
+    }
+  } catch (e) {}
+}
+</script>
+</body>
+</html>

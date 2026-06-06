@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>B端数据管理后台 — 物流单号系统</title>
+  <style>
+    * { margin:0; padding:0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+      background: #f0f2f5; color: #1a1a2e; min-height: 100vh;
+    }
+    .topbar {
+      background: linear-gradient(135deg, #1e1b4b, #4338ca);
+      color: #fff; padding: 14px 28px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(67,56,202,0.3);
+    }
+    .topbar-title { font-size: 18px; font-weight: 700; }
+    .topbar-links a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; margin-left: 20px; transition: color 0.2s; }
+    .topbar-links a:hover { color: #fff; }
+    .container { max-width: 1100px; margin:0 auto; padding: 28px 20px; }
+    .card {
+      background: #fff; border-radius: 16px; padding: 28px; margin-bottom: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .card-title { font-size: 16px; font-weight: 700; color: #1e1b4b; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .card-title .badge { background: #ede9fe; color: #7c3aed; font-size: 12px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+    .paste-hint { font-size: 13px; color: #888; margin-bottom: 8px; line-height: 1.6; }
+    .paste-hint strong { color: #4338ca; }
+    #pasteArea {
+      width: 100%; min-height: 180px; max-height: 400px;
+      padding: 14px 16px; border: 2px dashed #c7d2fe; border-radius: 12px;
+      font-size: 14px; font-family: "Courier New", "SF Mono", monospace;
+      line-height: 1.7; resize: vertical; outline: none;
+      color: #374151; background: #fafbff; transition: border-color 0.2s;
+    }
+    #pasteArea:focus { border-color: #4338ca; border-style: solid; background: #fff; }
+    #pasteArea::placeholder { color: #b0b7c3; }
+    .btn-row { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+    .btn { padding: 11px 22px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.1s, opacity 0.2s; letter-spacing: 0.5px; }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, #4338ca, #7c3aed); color: #fff; }
+    .btn-secondary { background: #f3f4f6; color: #374151; border: 1.5px solid #e5e7eb; }
+    .btn-danger { background: #fff1f2; color: #e11d48; border: 1.5px solid #fecdd3; }
+    .btn-info { background: #eff6ff; color: #2563eb; border: 1.5px solid #bfdbfe; }
+    #uploadResult { margin-top: 16px; padding: 14px 18px; border-radius: 10px; display: none; font-size: 14px; line-height: 1.7; }
+    #uploadResult.ok { background: #f0fdf4; border: 1.5px solid #86efac; color: #166534; }
+    #uploadResult.err { background: #fff1f2; border: 1.5px solid #fca5a5; color: #9f1239; }
+    .preview-wrap { margin-top: 20px; display: none; }
+    .preview-title { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 10px; }
+    .preview-scroll { overflow-x: auto; border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { background: #f8fafc; color: #6b7280; font-weight: 600; padding: 10px 14px; text-align: left; border-bottom: 2px solid #e5e7eb; white-space: nowrap; }
+    tbody tr:hover { background: #fafbff; }
+    tbody td { padding: 9px 14px; border-bottom: 1px solid #f3f4f6; color: #374151; }
+    .tag-ok { color: #059669; font-weight: 600; }
+    .tag-warn { color: #d97706; font-weight: 600; }
+    .tag-err { color: #dc2626; font-weight: 600; }
+    #dbList { display: none; margin-top: 12px; }
+    .db-stats { font-size: 14px; color: #6b7280; margin-bottom: 12px; }
+    .db-stats strong { color: #4338ca; }
+    .qr-section { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+    .qr-img-wrap { display: flex; align-items: center; justify-content: center; }
+    #qrImg { width: 200px; height: 200px; border-radius: 12px; border: 3px solid #e0e7ff; }
+    .qr-info { flex: 1; min-width: 200px; }
+    .qr-url { font-size: 13px; color: #6b7280; word-break: break-all; background: #f8fafc; padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #e5e7eb; }
+    .qr-tip { font-size: 12px; color: #9ca3af; line-height: 1.7; }
+    .qr-tip b { color: #059669; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 5px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 640px) {
+      .topbar { padding: 12px 16px; }
+      .container { padding: 16px 12px; }
+      .card { padding: 18px 16px; }
+      .qr-section { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">🛠️ 物流单号管理后台</div>
+  <div class="topbar-links">
+    <a href="/" target="_blank">📱 C端查询页</a>
+    <a href="#qr-section">🔗 二维码</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ① 数据录入 -->
+  <div class="card">
+    <div class="card-title">
+      📋 批量数据录入
+      <span class="badge">从飞书/Excel粘贴</span>
+    </div>
+    <div class="paste-hint">
+      <strong>列顺序（必须）：</strong>第一列 = <strong>地址（含手机号）</strong>，第二列 = <strong>物流单号（可为空）</strong><br>
+      在飞书表格中选中这两列 → Ctrl+C 复制 → 粘贴到下方文本框 → 点击「解析预览」→ 确认无误后「上传」
+    </div>
+    <div>
+      <textarea
+        id="pasteArea"
+        placeholder="在此粘贴（两列：地址 + 物流单号）&#10;&#10;示例（已发货）：&#10;广东省深圳市南山区 张三 13812345678&#9;SF1234567890&#10;北京市朝阳区 李四 18987654321&#9;YT9876543210&#10;&#10;示例（未发货，单号列为空）：&#10;上海市浦东新区 王五 19912345678&#9;"
+      ></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-info" onclick="previewData()">🔍 解析预览</button>
+      <button class="btn btn-primary" id="uploadBtn" onclick="uploadData()" disabled>⬆️ 确认上传到数据库</button>
+      <button class="btn btn-secondary" onclick="clearPaste()">🗑️ 清空</button>
+    </div>
+    <div class="preview-wrap" id="previewWrap">
+      <div class="preview-title" id="previewTitle"></div>
+      <div class="preview-scroll">
+        <table id="previewTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>提取手机号</th>
+              <th>物流单号</th>
+              <th>原始地址</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="uploadResult"></div>
+  </div>
+
+  <!-- ② 数据库查看 -->
+  <div class="card">
+    <div class="card-title">📦 当前数据库</div>
+    <div class="btn-row">
+      <button class="btn btn-info" onclick="loadDB()">🔄 刷新查看所有记录</button>
+      <button class="btn btn-danger" onclick="clearDB()">⚠️ 清空数据库</button>
+    </div>
+    <div id="dbList">
+      <div class="db-stats" id="dbStats"></div>
+      <div class="preview-scroll">
+        <table id="dbTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>手机号</th>
+              <th>物流单号（可多个）</th>
+            </tr>
+          </thead>
+          <tbody id="dbBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 二维码（永久） -->
+  <div class="card" id="qr-section">
+    <div class="card-title">
+      📲 C端查询页二维码
+      <span class="badge" style="background:#dcfce7;color:#059669">永久固定</span>
+    </div>
+    <div class="qr-section">
+      <div class="qr-img-wrap">
+        <img id="qrImg" class="qr-img" alt="查询页二维码">
+      </div>
+      <div class="qr-info">
+        <div class="qr-url" id="qrUrl">正在生成二维码...</div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="downloadQR()">⬇️ 下载二维码图片</button>
+          <button class="btn btn-secondary" onclick="copyQRUrl()">📋 复制链接</button>
+        </div>
+        <div class="qr-tip" style="margin-top:12px">
+          <b>✅ 此二维码永久有效</b><br>
+          链接固定不变，部署后直接打印或发送给达人<br>
+          📱 微信/支付宝扫码均可直接打开查询页<br>
+          🖨️ 可打印张贴，达人扫码即可自助查询
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API_BASE = window.location.origin;
+
+// ── 解析逻辑（与后端相同）──
+function parseLine(line) {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  let parts = trimmed.split('\t');
+  const addressRaw = parts[0].trim();
+  if (!addressRaw) return null;
+  const trackingNo = parts.length >= 2 ? parts[1].trim() : '';
+  const phoneRegex = /(?<![0-9])1[3-9]\d{9}(?![0-9])/g;
+  const phones = addressRaw.match(phoneRegex);
+  return {
+    trackingNo,
+    phone: phones ? phones[0] : null,
+    rawAddress: addressRaw,
+    ok: !!phones
+  };
+}
+
+// ── 预览 ──
+let parsedRows = [];
+
+function previewData() {
+  const raw = document.getElementById('pasteArea').value;
+  if (!raw.trim()) { alert('请先粘贴数据'); return; }
+  const lines = raw.split('\n');
+  parsedRows = [];
+  const tbody = document.getElementById('previewBody');
+  tbody.innerHTML = '';
+  let okCount = 0, errCount = 0;
+  lines.forEach((line, i) => {
+    if (!line.trim()) return;
+    const result = parseLine(line);
+    parsedRows.push({ raw: line, parsed: result });
+    const tr = document.createElement('tr');
+    if (!result) {
+      errCount++;
+      tr.innerHTML = `<td>${i+1}</td><td colspan="3" style="color:#9ca3af">（无法解析此行）</td><td><span class="tag-err">❌ 跳过</span></td>`;
+    } else if (!result.phone) {
+      errCount++;
+      tr.innerHTML = `<td>${i+1}</td><td><span class="tag-warn">未找到手机号</span></td><td style="color:#9ca3af">${esc(result.trackingNo)||'（空）'}</td><td style="color:#9ca3af;font-size:12px">${esc(result.rawAddress)}</td><td><span class="tag-warn">⚠️ 将跳过</span></td>`;
+    } else if (!result.trackingNo) {
+      okCount++;
+      tr.innerHTML = `<td>${i+1}</td><td><span class="tag-ok">${esc(result.phone)}</span></td><td><span class="tag-warn">（暂无单号）</span></td><td style="color:#9ca3af;font-size:12px">${esc(result.rawAddress)}</td><td><span style="color:#d97706;font-weight:600">⏳ 录入为未发货</span></td>`;
+    } else {
+      okCount++;
+      tr.innerHTML = `<td>${i+1}</td><td><span class="tag-ok">${esc(result.phone)}</span></td><td style="font-weight:600">${esc(result.trackingNo)}</td><td style="color:#9ca3af;font-size:12px">${esc(result.rawAddress)}</td><td><span class="tag-ok">✅ 可上传</span></td>`;
+    }
+    tbody.appendChild(tr);
+  });
+  document.getElementById('previewTitle').textContent =
+    `解析结果：共 ${lines.filter(l=>l.trim()).length} 行，✅ 可上传 ${okCount} 条，⚠️ 将跳过 ${errCount} 条`;
+  document.getElementById('previewWrap').style.display = 'block';
+  document.getElementById('uploadBtn').disabled = okCount === 0;
+  if (okCount === 0) {
+    showUploadResult('err', '⚠️ 没有可上传的数据，请检查粘贴内容格式（需要包含手机号）');
+  } else {
+    document.getElementById('uploadResult').style.display = 'none';
+  }
+}
+
+// ── 上传 ──
+async function uploadData() {
+  const raw = document.getElementById('pasteArea').value;
+  if (!raw.trim()) { alert('请先粘贴并预览数据'); return; }
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>上传中...';
+  try {
+    const res = await fetch(`${API_BASE}/api/upload`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ rawText: raw })
+    });
+    const data = await res.json();
+    if (data.success) {
+      let html = `✅ <strong>${data.message}</strong>`;
+      if (data.errors && data.errors.length > 0) {
+        html += '<br><br>以下行无法提取手机号（已跳过）：<br>';
+        html += data.errors.map(e=>`· ${e}`).join('<br>');
+      }
+      showUploadResult('ok', html);
+      loadDB();
+    } else {
+      showUploadResult('err', `❌ ${data.message}`);
+    }
+  } catch (err) {
+    showUploadResult('err', `❌ 网络错误：${err.message}`);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '⬆️ 确认上传到数据库';
+  }
+}
+
+function showUploadResult(type, html) {
+  const el = document.getElementById('uploadResult');
+  el.className = type === 'ok' ? 'ok' : 'err';
+  el.innerHTML = html; el.style.display = 'block';
+}
+
+function clearPaste() {
+  document.getElementById('pasteArea').value = '';
+  document.getElementById('previewWrap').style.display = 'none';
+  document.getElementById('uploadResult').style.display = 'none';
+  document.getElementById('uploadBtn').disabled = true;
+}
+
+// ── 查看数据库 ──
+async function loadDB() {
+  try {
+    const res = await fetch(`${API_BASE}/api/list`);
+    const data = await res.json();
+    const tbody = document.getElementById('dbBody');
+    tbody.innerHTML = '';
+    const entries = Object.entries(data.data);
+    document.getElementById('dbStats').innerHTML = `数据库共有 <strong>${entries.length}</strong> 条手机号记录`;
+    if (entries.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#9ca3af;padding:20px">暂无数据</td></tr>';
+    } else {
+      entries.forEach(([phone, nos], i) => {
+        const tr = document.createElement('tr');
+        const noHtml = nos && nos.length > 0
+          ? nos.map(n=>`<span style="display:inline-block;background:#f0fdf4;color:#059669;padding:2px 8px;border-radius:6px;margin:2px;font-weight:600">${esc(n)}</span>`).join('')
+          : '<span style="color:#d97706">（未发货）</span>';
+        tr.innerHTML = `<td>${i+1}</td><td style="font-weight:600">${esc(phone)}</td><td>${noHtml}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    document.getElementById('dbList').style.display = 'block';
+  } catch (err) { alert('加载失败：' + err.message); }
+}
+
+// ── 清空数据库 ──
+async function clearDB() {
+  const pwd = prompt('⚠️ 危险操作！请输入管理员密码以清空数据库：');
+  if (!pwd) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/clear`, {
+      method: 'DELETE', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ password: pwd })
+    });
+    const data = await res.json();
+    alert(data.success ? '✅ 数据库已清空' : '❌ ' + data.message);
+    if (data.success) loadDB();
+  } catch (err) { alert('操作失败：' + err.message); }
+}
+
+// ── 二维码生成（调用服务端接口，PNG格式）──
+function generateQR() {
+  var url = window.location.origin + '/';
+  document.getElementById('qrUrl').textContent = url;
+  var img = document.getElementById('qrImg');
+  // 调用服务端 /api/qrcode 接口（PNG格式，微信可长按识别）
+  img.src = '/api/qrcode?url=' + encodeURIComponent(url) + '&t=' + Date.now();
+  img.onerror = function() {
+    document.getElementById('qrUrl').innerHTML =
+      url + '<br><span style="color:#dc2626">⚠️ 二维码生成失败，请刷新页面重试</span>';
+  };
+}
+
+function downloadQR() {
+  // 下载PNG二维码图片
+  var url = window.location.origin + '/api/qrcode?url=' + encodeURIComponent(window.location.origin + '/') + '&t=' + Date.now();
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = '物流查询二维码.png';
+  a.click();
+}
+
+function copyQRUrl() {
+  const url = window.location.origin + '/';
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => alert('✅ 链接已复制到剪贴板'));
+  } else {
+    prompt('请手动复制以下链接：', url);
+  }
+}
+
+// ── 工具函数 ──
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+window.onload = function() {
+  generateQR();
+  loadDB();
+};
+</script>
+</body>
+</html>
